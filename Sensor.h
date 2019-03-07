@@ -4,9 +4,9 @@ PF0,2 >> 왼쪽 초음파 [트리거 & 에코]
 PF1,3 >> 오른쪽 초음파 [트리거 & 에코]
 *****************************************************************************/
 
-#define trig1_1 PORTF|=1  // PF0, srf04-1 트리거
+#define trig1_1 PORTF|=1  // PF0, srf04-1 트리거 보라색
 #define trig1_0 PORTF&=~1 // PF0, srf04-1 트리거
-#define echo1   (PINF&4)  // PF2, srf04-1 에코
+#define echo1   (PINF&4)  // PF2, srf04-1 에코 회색
 //
 #define trig2_1 PORTF|=2  // PF1, srf04-2 트리거
 #define trig2_0 PORTF&=~2 // PF1, srf04-2 트리거
@@ -23,8 +23,10 @@ float norm1,norm2,diff1,diff2;
 #define NORM_MIN 3
 #define NORM_MAX 180
 
-unsigned int  cnt1,cnt2;
+//초음파 센서값
+unsigned int  cnt1, cnt2, TCNT0_H, range_L_H, range_L_L, range_R_H, range_R_L;
 
+//초음파 센서 함수
 void get_SONAR();
 void y_SONAR(void);
 void init_SONAR(void);
@@ -61,8 +63,10 @@ INT1 (PD1) >> 오
 unsigned int enc_norm1,enc_norm2, enc_diff1, enc_diff2; // 정규화 된 값
 
 //전역변수 선언부
-volatile unsigned int count_L, count_R, encoder_T, flag, M_L,M_R, RPM_L, RPM_R;
+volatile unsigned int count_L, count_R, encoder_T, flag, M_L,M_R;
 volatile unsigned int encT_L, encT_R;
+volatile float  RPM_L, RPM_R;
+
 /*
 volatile float motor_signal0;
 volatile float error_funct;

@@ -4,28 +4,34 @@
 #include <util/delay.h>
 #include <avr/interrupt.h> 
 #include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include "Motor.h"
 #include "Timer_pwm.h"
 #include "Sensor.h"
+#include "UART.h"
+/*******FOR ENCODER TIMER*************/
+//unsigned int time=0x0000;
 
 /*************************SONAR*****************************/
 
 void init_SONAR(void){
 
 	DDRF &= ~(0x0C);
-
     DDRF|=0x03; // 트리거
-
+	TCCR0 = 0b00001000;
 }
 
 void get_SONAR(){
-//초음파 값 받는 함수
 
+	//초음파 값 받는 함수
+	
 	// TCNTx - 타이머/카운터 레지스터 (실제 카운트되는 수치가 저장되는 레지스터)
 	// TCCRx - 타이머/카운터 제어 레지스터(주로 동작모드 및 프리스케일러 설정) 
- 
-    trig1_1;      _delay_us(10); trig1_0;  //초음파 트리거1
+
+/******TIMER1 사용한 초음파 센서 코드******/
+
+/*  	trig1_1;      _delay_us(10); trig1_0;  //초음파 트리거1
     while(!echo1); TCNT1=0;      TCCR1B=2; //high가 되면, 카운터 시작, 8분주=0.5us
     while( echo1); TCCR1B=0; //low가 되면 끝
     cnt1=TCNT1/116; //cm변환
@@ -36,13 +42,36 @@ void get_SONAR(){
     while( echo2); TCCR1B=0; //low가 되면 끝
     cnt2= TCNT1/116; //cm변환
     _delay_ms(50);
+*/
+/******확장 TIMER0 사용한 초음파 센서 코드******/
+ 	TCNT0_H=0;
+    trig1_1;      _delay_us(10); trig1_0;  //초음파 트리거1
+    while(!echo1); TCNT0=0;      TCCR0|=2; //high가 되면, 카운터 시작, 8분주=0.5us
+    while( echo1) {if(TCNT0==255){TCNT0_H++; TCCR0=0;}} //low가 되면 끝
+	TCCR0 &= 0x08; //카운터 정지//
+    range_L_L = TCNT0; 
+	range_L_H = (TCNT0_H*256);
+	cnt1=(range_L_L+range_L_H)/116; //cm변환
+	TCNT0_H=0; TCNT0=0;
+    _delay_ms(50);
 
+    TCNT0_H=0;
+    trig2_1;       _delay_us(10); trig2_0; //초음파 트리거2
+    while(!echo2); TCNT0=0;      TCCR0|=2; //high가 되면, 카운터 시작, 8분주=0.5us
+    while( echo2); {if(TCNT0==255){TCNT0_H++; TCCR0=0;}} //low가 되면 끝
+	TCCR0 &= 0x08; //카운터 정지//
+	range_R_L = TCNT0; 
+	range_R_H = (TCNT0_H*256);
+	cnt2=(range_R_L+range_R_H)/116; //cm변환
+	TCNT0_H=0; TCNT0=0;
+    _delay_ms(50);
+    
 }
 //
 
 void y_SONAR(void){//핀설정 및 초음파센서 값 받아 모터값 연동할 함수
-
 	get_SONAR();
+
 	// normalize range from 0 to 600
 	if (cnt1 > NORM_MAX) cnt1 = NORM_MAX;
 	if (cnt1 < NORM_MIN) cnt1 = NORM_MIN;
@@ -191,10 +220,14 @@ void init_ENCODER()
 
 	EICRA=0x0a; //외부 인터럽트 INT0, INT2는  FALLING_EDGE로 함
  	EIMSK=0x03; //외부 인터럽트 INT0, INT2만 허가, INT0는 PD0 / INT2는 PD2에서 사용됨
-	TCCR0 = (0<<FOC0)|(1<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(1<<CS02)|(0<<CS01)|(1<<CS00);  //FAST_PWM_MODE & CLK/256 (분주비:256)
-	TCNT0 = 0x00; //타이머 초기화
-	OCR0  = 0x00; //OUTPUT_COMPARE_REGISTER 0 초기화
-
+	//TCCR0 = (0<<FOC0)|(1<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(1<<CS02)|(0<<CS01)|(1<<CS00);  //FAST_PWM_MODE & CLK/256 (분주비:256)
+	//TCNT0 = 0x00; //타이머 초기화
+	//OCR0  = 0x00; //OUTPUT_COMPARE_REGISTER 0 초기화
+	TIMSK=0x04;         //0000 0100 TCNT1 overflow interrupt enable
+	TCCR1A = 0b00000000;    //0000 0000  normal mode 0~ 0xFFF
+	TCCR1B = 0b00000100;     //00/0/0 0/100  N : 1             //FAST_PWM_MODE & CLK/256 (분주비:256)
+	TCCR1C = 0x00;    //0000 0000
+	TCNT1 = 0;     //tcnt1 = 0x8000;
 }
 
 ISR(INT0_vect) 
@@ -207,19 +240,13 @@ ISR(INT1_vect)
 	count_R++;
 }
 
-ISR(TIMER0_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
+ISR(TIMER1_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
 
-
-	TCNT0=111; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
-	if(++encoder_T>=80){
-	M_L=count_L;
-	M_R=count_R;
+	TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
+	RPM_L=60*(count_L/60)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
+    RPM_R=60*(count_R/60)/0.1;
 	count_L=0;
 	count_R=0;
-	encoder_T=0;
-	flag=1;
-	}
-	
 
 }
 
