@@ -225,7 +225,7 @@ void init_ENCODER()
 	//OCR0  = 0x00; //OUTPUT_COMPARE_REGISTER 0 초기화
 	TIMSK=0x04;         //0000 0100 TCNT1 overflow interrupt enable
 	TCCR1A = 0b00000000;    //0000 0000  normal mode 0~ 0xFFF
-	TCCR1B = 0b00000100;     //00/0/0 0/100  N : 1             //FAST_PWM_MODE & CLK/256 (분주비:256)
+	TCCR1B = 0b00000011;     //00/0/0 0/100  N : 1             //FAST_PWM_MODE & CLK/256 (분주비:256)
 	TCCR1C = 0x00;    //0000 0000
 	TCNT1 = 0;     //tcnt1 = 0x8000;
 }
@@ -243,8 +243,8 @@ ISR(INT1_vect)
 ISR(TIMER1_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
 
 	TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
-	RPM_L=60*(count_L/60)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
-    RPM_R=60*(count_R/60)/0.1;
+	RPM_L=count_L;//60*(count_L/200)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
+    RPM_R=count_R;//60*(count_R/200)/0.1;
 	count_L=0;
 	count_R=0;
 
