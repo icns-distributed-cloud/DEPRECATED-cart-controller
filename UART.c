@@ -25,7 +25,7 @@ unsigned char rx0_char(void);
 void tx0_char(unsigned char data);
 //void uart1_init(void);
 
-
+//jkljkl
 
 // UART1 initialize
 // Char size: 8 bit, Parity: Disabled
