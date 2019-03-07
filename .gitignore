@@ -46,5 +46,5 @@ tmtagsHistory
 # AVR studio files #
 ####################
 default/
-TrashCarrier.aps
-trashcarrier.aws
+*.aps
+*.aws
