@@ -41,16 +41,19 @@ void init_DEVICES(void)
 
 int main(){
 
-	char buffer1[50], buffer2[50];
+	//char buffer1[50], buffer2[50];
 
-	TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트를 만들기 위해서 14.7456MHZ인데 TCCRO의 설정이 256분주
-	TIMSK=0x0; //타이머0 오버플로 인터럽트를 허가함
+	//TCNT1 = 34286; //타이머0을 가지고 0.0025초 오버플로 인터럽트를 만들기 위해서 14.7456MHZ인데 TCCRO의 설정이 256분주
+	//TIMSK=0x04; //타이머0 오버플로 인터럽트를 허가함
 	init_DEVICES();	
 	MotorStop();
-	
+	MotorGoFoward();
+	OCR3A = 600;
+	OCR3B = 600;
 	while(1)
 	{ 
 	//	y_SONAR();
+
 
     // SONAR BLUETOOTH DISPLAY
 	/*	itoa(cnt1,buffer1,10); //char으로 변환
@@ -65,12 +68,8 @@ int main(){
     	SCI_OutString(buffer2);
    		SCI_OutChar(LF);  // 다음줄
    		SCI_OutChar(CR);*/
-
-
-
-		MotorGoFoward();
-		OCR3A = 500;
-		OCR3B = 500;
+		
+		PID();
 	//	if(flag){  //1초 경과
             //RPM_L=60*(M_L/60)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
             //RPM_R=60*(M_R/60)/0.1;
@@ -78,20 +77,6 @@ int main(){
 		//	enc_norm2 = (RPM_R - NORM_MIN)/(NORM_MAX - NORM_MIN) * RANGE_MAX;
 			// W1_MIN, W2_MIN: 400
 
-			
-			/********BLUETOOTH DATA TRANSMIT********/
-			itoa(RPM_L,buffer1,10); //char으로 변환
-   	    	itoa(RPM_R,buffer2,10);
-
-        	SCI_OutChar('L'); 
-			SCI_OutChar(32);  // space bar
-        	SCI_OutString(buffer1); //엔코더값
-       		SCI_OutChar(32);
-      		SCI_OutChar('R');
-			SCI_OutChar(32); 
-      		SCI_OutString(buffer2);
-   			SCI_OutChar(LF);  // 다음줄
-   			SCI_OutChar(CR);
       //      flag=0;
    	//	}
        // RPM_L=M_L; //rpm=(60*m)/(주기*분해능)=(60*m)/(1s*200)	

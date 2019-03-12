@@ -59,29 +59,32 @@ INT1 (PD1) >> 오
 //범위 정규화를 위함
 #define ENC_NORM_MIN 0
 #define ENC_NORM_MAX 1023
-
 unsigned int enc_norm1,enc_norm2, enc_diff1, enc_diff2; // 정규화 된 값
 
 //전역변수 선언부
-volatile unsigned int count_L, count_R, encoder_T, flag, M_L,M_R;
+volatile int count_L, count_R, encoder_T, flag, timer1_counter;
 volatile unsigned int encT_L, encT_R;
-volatile float  RPM_L, RPM_R;
+volatile double RPM_L, RPM_R, M_L, M_R;
 
-/*
-volatile float motor_signal0;
-volatile float error_funct;
-volatile float old_error_funct;
-volatile float old_error_funct2;
-volatile float desired;
-volatile float measured;
-volatile float old_motor_signal;
-volatile double KP;
-volatile double KD;
-volatile double KI;
-volatile float delta_t;
-volatile int limit;
-volatile int pwmduty;*/
+
+volatile float Motor_Signal_L;
+volatile float Motor_Signal_R;
+volatile float Error_L;
+volatile float Error_R;
+volatile float Old_Error_L;
+volatile float Old_Error_R;
+volatile float Old_Error_2_L;
+volatile float Old_Error_2_R;
+volatile float Desired_Speed; //PWM 환산
+volatile float Real_Speed_L; 
+volatile float Real_Speed_R; 
+volatile float Measured_Encoder_L;
+volatile float Measured_Encoder_R;
+volatile float Old_Motor_L;
+volatile float Old_Motor_R;
+volatile int Pwmduty_L;
+volatile int Pwmduty_R;
 
 //함수 선언부
 void init_ENCODER();
-//void PID(void);
+void PID(void);

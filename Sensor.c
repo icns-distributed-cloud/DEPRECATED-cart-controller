@@ -12,6 +12,15 @@
 #include "UART.h"
 /*******FOR ENCODER TIMER*************/
 //unsigned int time=0x0000;
+char buffer1[50], buffer2[50];
+
+
+/*******FOR PID CONTROL*************/
+volatile double KP = 10;
+volatile double KI = 5;
+volatile double KD = 8;
+volatile float delta_t = 0.1;
+volatile int limit = 300;
 
 /*************************SONAR*****************************/
 
@@ -223,11 +232,21 @@ void init_ENCODER()
 	//TCCR0 = (0<<FOC0)|(1<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(1<<CS02)|(0<<CS01)|(1<<CS00);  //FAST_PWM_MODE & CLK/256 (분주비:256)
 	//TCNT0 = 0x00; //타이머 초기화
 	//OCR0  = 0x00; //OUTPUT_COMPARE_REGISTER 0 초기화
-	TIMSK=0x04;         //0000 0100 TCNT1 overflow interrupt enable
+	TCCR1A = 0;
+  	TCCR1B = 0;
+  	timer1_counter = 59286;   // preload timer 65536-16MHz/256/2Hz (34286 for 0.5sec) (59286 for 0.1sec)
+  	TCNT1 = timer1_counter;   // preload timer
+  	TCCR1B |= (1 << CS12);    // 256 prescaler 
+  	TIMSK |= (1 << TOIE1);   // enable timer overflow interrupt
+		
+	/*TIMSK=0x04;         //0000 0100 TCNT1 overflow interrupt enable
+	TCCR1A = 0;
+  	TCCR1B = 0;
+	TCNT1 = 34286;            // preload timer 65536-16MHz/256/2Hz
 	TCCR1A = 0b00000000;    //0000 0000  normal mode 0~ 0xFFF
-	TCCR1B = 0b00000011;     //00/0/0 0/100  N : 1             //FAST_PWM_MODE & CLK/256 (분주비:256)
+	TCCR1B = 0b00000101;     //00/0/0 0/100  N : 1             //FAST_PWM_MODE & CLK/256 (분주비:256)
 	TCCR1C = 0x00;    //0000 0000
-	TCNT1 = 0;     //tcnt1 = 0x8000;
+	TCNT1 = 0;     //tcnt1 = 0x8000;*/
 }
 
 ISR(INT0_vect) 
@@ -241,38 +260,83 @@ ISR(INT1_vect)
 }
 
 ISR(TIMER1_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
+	TCNT1 = timer1_counter;   // set timer
+  	RPM_L = 60.0*(count_L/200.0)/0.1;  //calculate motor speed, unit is rpm
+  	count_L=0;
+	RPM_R = 60.0*(count_R/200.0)/0.1;  //calculate motor speed, unit is rpm
+  	count_R=0;
+	
+	/********BLUETOOTH DATA TRANSMIT********/
+	itoa(RPM_L,buffer1,10); //char으로 변환
+   	itoa(RPM_R,buffer2,10);
 
-	TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
+    SCI_OutChar('L'); 
+	SCI_OutChar(32);  // space bar
+    SCI_OutString(buffer1); //엔코더값
+    SCI_OutChar(32);
+    SCI_OutChar('R');
+	SCI_OutChar(32); 
+    SCI_OutString(buffer2);
+   	SCI_OutChar(LF);  // 다음줄
+   	SCI_OutChar(CR);
+	
+	/*
+	TCNT1 = 34286;           // preload timer
+	//TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
 	RPM_L=count_L;//60*(count_L/200)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
     RPM_R=count_R;//60*(count_R/200)/0.1;
 	count_L=0;
-	count_R=0;
-
+	count_R=0;*/
 }
 
-/*
 void PID(void) {          // PID 제어 함수
 
-pwmduty = OCR3A;
-desired = (pwmduty/256)*920;     // 목표 회전수 계산. MAX rpm = 920. //초음파 센서 값 삽입
-measured = (1/encT_0)*60;        // ex_int0에서 검출한 회전주기를 이용해 rpm 검출
-  
- // calculate the motor signal according the PID equation.
- // the derivative and the integral are approximated using simple linear approximations.
+	Pwmduty_L = OCR3A;
+	Pwmduty_R = OCR3B;
 
- error_funct = desired - measured;
- motor_signal0 = old_motor_signal + KP * (error_funct - old_error_funct) + KI * delta_t * (error_funct + old_error_funct) / 2 + (KD / delta_t) * (error_funct - 2 * old_error_funct + old_error_funct2);
- // 선형근사를 이용한 출력 계산식.
- if (motor_signal0 < 0) { // limiting the output
-  motor_signal0 = 0;
- }
- if (motor_signal0 > limit) {
-  motor_signal0 = limit;
- }
+	Real_Speed_L = Pwmduty_L*2.4;
+	Real_Speed_R = Pwmduty_R*2.4;
 
- old_motor_signal = motor_signal0; // update
- old_error_funct2 = old_error_funct;
- old_error_funct = error_funct;
+	Desired_Speed = 250;    // 목표 회전수
+	Measured_Encoder_L = RPM_L;//측정되는 좌측 RPM 값 
+	Measured_Encoder_R = RPM_R;//측정되는 좌측 RPM 값
 
+	Error_L = Desired_Speed - Measured_Encoder_L;
+	Error_R = Desired_Speed - Measured_Encoder_R;
+
+	Motor_Signal_L = Old_Motor_L + KP*(Error_L - Old_Error_L) + KI*delta_t*(Error_L + Old_Error_L)/2 + (KD / delta_t) * (Error_L - 2 * Old_Error_L + Old_Error_2_L);
+	Motor_Signal_R = Old_Motor_R + KP*(Error_R - Old_Error_R) + KI*delta_t*(Error_R + Old_Error_R)/2 + (KD / delta_t) * (Error_R - 2 * Old_Error_R + Old_Error_2_R);
+	
+	//update new speed
+	
+	if (Motor_Signal_L <255 && Motor_Signal_L >0){
+ 		OCR3A = Motor_Signal_L*2.4;  //set motor speed 
+	}
+	else{;
+		if (Motor_Signal_L>255){
+			OCR3A = 600;
+		}
+		else{
+			OCR3A = 0;
+		}
+	}
+	if (Motor_Signal_R <255 && Motor_Signal_R >0){
+ 		OCR3B = Motor_Signal_R*2.4;   //set motor speed 
+	}
+	else{
+		if (Motor_Signal_R>255){
+			OCR3B = 600;
+		}
+		else{
+			OCR3B = 0;
+		}
+	}
+ 	Old_Motor_L = Motor_Signal_L; // update
+ 	Old_Motor_R = Motor_Signal_R; // update
+
+	Old_Error_2_L = Old_Error_L;
+ 	Old_Error_2_R = Old_Error_R;
+
+	Old_Error_L = Error_L;
+	Old_Error_R = Error_R;
 }
-*/
