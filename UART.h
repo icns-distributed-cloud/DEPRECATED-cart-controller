@@ -19,7 +19,7 @@ void SCI_OutString(char *pt);
 void SCI_OutChar(char letter);
 
 
-
+unsigned int Add_Speed;
 
 //-------------------------SCI_OutChar to USART------------------------
 

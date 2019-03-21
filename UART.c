@@ -139,22 +139,20 @@ void SCI_OutString(char *pt)
 
  //USART1, Rx Interrupt 처리 Routine                                           
 
-/*
+
 ISR(USART0_RX_vect)
 {
-   char c;
+	char c;
+	// 입력된 문자를 처리 하는 동안 새로운 Interrupt가 발생 하지 않도록
+	// Rx Interrupt를 Disable 한다.
+	UCSR0B &= ~(1 << RXCIE0);   // Rx Complete Interrupt disable
 
-   // 입력된 문자를 처리 하는 동안 새로운 Interrupt가 발생 하지 않도록
-   // Rx Interrupt를 Disable 한다.
-   UCSR0B &= ~(1 << RXCIE0);   // Rx Complete Interrupt disable
+	c = rx0_char();
 
-
-   c = rx0_char();
-   tx0_char(c);
-   LCD_OutChar(c);
-   delay_1mSec(10);
-
-*/
+	if(c=='a') Add_Speed+=25;
+	
+	UCSR0B |= (1 << RXCIE0); 
+}
 /*
 ISR(USART0_RX_vect)
 {

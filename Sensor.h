@@ -55,7 +55,6 @@ void drive_PSD();
 INT0 (PD0) >> 왼
 INT1 (PD1) >> 오
 *****************************************************************************/
-
 //범위 정규화를 위함
 #define ENC_NORM_MIN 0
 #define ENC_NORM_MAX 1023
@@ -64,7 +63,7 @@ unsigned int enc_norm1,enc_norm2, enc_diff1, enc_diff2; // 정규화 된 값
 //전역변수 선언부
 volatile int count_L, count_R, encoder_T, flag, timer1_counter;
 volatile unsigned int encT_L, encT_R;
-volatile double RPM_L, RPM_R, M_L, M_R;
+volatile double RPM_L, RPM_R, M_L, M_R, Current_Speed;
 
 
 volatile float Motor_Signal_L;
@@ -75,7 +74,8 @@ volatile float Old_Error_L;
 volatile float Old_Error_R;
 volatile float Old_Error_2_L;
 volatile float Old_Error_2_R;
-volatile float Desired_Speed; //PWM 환산
+volatile float Desired_Speed_L; //PWM 환산
+volatile float Desired_Speed_R; //PWM 환산
 volatile float Real_Speed_L; 
 volatile float Real_Speed_R; 
 volatile float Measured_Encoder_L;

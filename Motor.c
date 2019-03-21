@@ -64,7 +64,7 @@ void MotorStop()//정지
 	MotorPort &= ~((1<<MotorL_2)|(1<<MotorR_1)|(1<<MotorL_1)|(1<<MotorR_2));
 	asm volatile(" NOP");
 }
-
+/*
 void MotorCommand(char command)//유아트용 명령어
 {	
 	MotorPort |= 0x00;
@@ -83,8 +83,28 @@ void MotorCommand(char command)//유아트용 명령어
 	else if ( command == 'e')  Right3();
 	else if ( command == 'c')  Right4();
 
-}
+}*/
+void MotorCommand(char command)//유아트용 명령어
+{	
+	MotorPort |= 0x00;
+	if ( command == 'w') {
+		MotorGoFoward();
+		OCR3A += 25;
+		OCR3B += 25;
+	}
+	else if ( command == 'x') {
+		DDRE=1;
+		MotorStop();
+		PORTE = 1;
+	}
+	else if ( command == 'a')  TurnLeft();
+	else if ( command == 'd')  TurnRight();
+	else if ( command == 'q')  Left3();
+	else if ( command == 'z')  Left4();
+	else if ( command == 'e')  Right3();
+	else if ( command == 'c')  Right4();
 
+}
 void Left1(int a)//Custom 좌회전
 {
 	MotorGoFoward();

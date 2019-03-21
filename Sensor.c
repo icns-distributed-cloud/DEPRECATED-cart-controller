@@ -12,13 +12,13 @@
 #include "UART.h"
 /*******FOR ENCODER TIMER*************/
 //unsigned int time=0x0000;
-char buffer1[50], buffer2[50];
+char buffer1[50], buffer2[50], buffer3[50];
 
 
 /*******FOR PID CONTROL*************/
-volatile double KP = 10;
-volatile double KI = 5;
-volatile double KD = 8;
+volatile double KP = 0.01371;
+volatile double KI = 0.004997;
+volatile double KD = -0.0006212;
 volatile float delta_t = 0.1;
 volatile int limit = 300;
 
@@ -62,7 +62,7 @@ void get_SONAR(){
 	range_L_H = (TCNT0_H*256);
 	cnt1=(range_L_L+range_L_H)/116; //cm변환
 	TCNT0_H=0; TCNT0=0;
-    _delay_ms(50);
+    _delay_ms(100);
 
     TCNT0_H=0;
     trig2_1;       _delay_us(10); trig2_0; //초음파 트리거2
@@ -73,7 +73,7 @@ void get_SONAR(){
 	range_R_H = (TCNT0_H*256);
 	cnt2=(range_R_L+range_R_H)/116; //cm변환
 	TCNT0_H=0; TCNT0=0;
-    _delay_ms(50);
+    _delay_ms(100);
     
 }
 //
@@ -102,7 +102,7 @@ void y_SONAR(void){//핀설정 및 초음파센서 값 받아 모터값 연동할 함수
 	n_v1 = diff1 * 10 + W1_MIN;
 	n_v2 = diff2 * 10 + W2_MIN;
 	
-	Motor_Sonar( n_v1 , n_v2 );
+	//Motor_Sonar( n_v1 , n_v2 );
 
 }
 
@@ -229,16 +229,13 @@ void init_ENCODER()
 
 	EICRA=0x0a; //외부 인터럽트 INT0, INT2는  FALLING_EDGE로 함
  	EIMSK=0x03; //외부 인터럽트 INT0, INT2만 허가, INT0는 PD0 / INT2는 PD2에서 사용됨
-	//TCCR0 = (0<<FOC0)|(1<<WGM00)|(1<<COM01)|(0<<COM00)|(1<<WGM01)|(1<<CS02)|(0<<CS01)|(1<<CS00);  //FAST_PWM_MODE & CLK/256 (분주비:256)
-	//TCNT0 = 0x00; //타이머 초기화
-	//OCR0  = 0x00; //OUTPUT_COMPARE_REGISTER 0 초기화
 	TCCR1A = 0;
   	TCCR1B = 0;
   	timer1_counter = 59286;   // preload timer 65536-16MHz/256/2Hz (34286 for 0.5sec) (59286 for 0.1sec)
   	TCNT1 = timer1_counter;   // preload timer
   	TCCR1B |= (1 << CS12);    // 256 prescaler 
   	TIMSK |= (1 << TOIE1);   // enable timer overflow interrupt
-		
+
 	/*TIMSK=0x04;         //0000 0100 TCNT1 overflow interrupt enable
 	TCCR1A = 0;
   	TCCR1B = 0;
@@ -261,15 +258,17 @@ ISR(INT1_vect)
 
 ISR(TIMER1_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
 	TCNT1 = timer1_counter;   // set timer
-  	RPM_L = 60.0*(count_L/200.0)/0.1;  //calculate motor speed, unit is rpm
-  	count_L=0;
-	RPM_R = 60.0*(count_R/200.0)/0.1;  //calculate motor speed, unit is rpm
-  	count_R=0;
+  	RPM_L = 145.99*exp(0.0015*count_L);  //calculate motor speed, unit is rpm
+  	M_L=count_L;
+	count_L=0;
 	
+	RPM_R = 144.47*exp(0.0015*count_R);  //calculate motor speed, unit is rpm
+  	M_R=count_R;
+	count_R=0;
 	/********BLUETOOTH DATA TRANSMIT********/
 	itoa(RPM_L,buffer1,10); //char으로 변환
    	itoa(RPM_R,buffer2,10);
-
+	itoa(Current_Speed,buffer3,10);
     SCI_OutChar('L'); 
 	SCI_OutChar(32);  // space bar
     SCI_OutString(buffer1); //엔코더값
@@ -277,60 +276,52 @@ ISR(TIMER1_OVF_vect){//2.5ms 101=>256분주 111=>1024분주
     SCI_OutChar('R');
 	SCI_OutChar(32); 
     SCI_OutString(buffer2);
+	SCI_OutChar(32);
+	SCI_OutChar('S');
+	SCI_OutString(buffer3);
+	SCI_OutChar(32); 
    	SCI_OutChar(LF);  // 다음줄
-   	SCI_OutChar(CR);
-	
-	/*
-	TCNT1 = 34286;           // preload timer
-	//TCNT1=0; //타이머0을 가지고 0.0025초 오버플로 인터럽트 //144개의 카운트 
-	RPM_L=count_L;//60*(count_L/200)/0.1;// rpm=(60*m)/(주기*분해능)=(60*m)/(1s*1000) // 나누기 기어비 
-    RPM_R=count_R;//60*(count_R/200)/0.1;
-	count_L=0;
-	count_R=0;*/
+   	SCI_OutChar(CR);	
 }
 
 void PID(void) {          // PID 제어 함수
 
-	Pwmduty_L = OCR3A;
-	Pwmduty_R = OCR3B;
+	Desired_Speed_L = n_v1;    // 목표 회전수
+	Desired_Speed_R = n_v2;
+	Measured_Encoder_L = M_L;//측정되는 좌측 RPM 값 
+	Measured_Encoder_R = M_R;//측정되는 좌측 RPM 값
 
-	Real_Speed_L = Pwmduty_L*2.4;
-	Real_Speed_R = Pwmduty_R*2.4;
+	Error_L = Desired_Speed_L - 145.99*exp(0.0015*Measured_Encoder_L);
+	Error_R = Desired_Speed_R - 144.47*exp(0.0015*Measured_Encoder_R);
 
-	Desired_Speed = 250;    // 목표 회전수
-	Measured_Encoder_L = RPM_L;//측정되는 좌측 RPM 값 
-	Measured_Encoder_R = RPM_R;//측정되는 좌측 RPM 값
+	Motor_Signal_L = Old_Motor_L + KP*(Error_L - Old_Error_L) + KI*delta_t*(Error_L + Old_Error_L)/2 + (KD/delta_t) * (Error_L - 2 * Old_Error_L + Old_Error_2_L);
+	Motor_Signal_R = Old_Motor_R + KP*(Error_R - Old_Error_R) + KI*delta_t*(Error_R + Old_Error_R)/2 + (KD/delta_t) * (Error_R - 2 * Old_Error_R + Old_Error_2_R);
 
-	Error_L = Desired_Speed - Measured_Encoder_L;
-	Error_R = Desired_Speed - Measured_Encoder_R;
-
-	Motor_Signal_L = Old_Motor_L + KP*(Error_L - Old_Error_L) + KI*delta_t*(Error_L + Old_Error_L)/2 + (KD / delta_t) * (Error_L - 2 * Old_Error_L + Old_Error_2_L);
-	Motor_Signal_R = Old_Motor_R + KP*(Error_R - Old_Error_R) + KI*delta_t*(Error_R + Old_Error_R)/2 + (KD / delta_t) * (Error_R - 2 * Old_Error_R + Old_Error_2_R);
-	
 	//update new speed
-	
-	if (Motor_Signal_L <255 && Motor_Signal_L >0){
- 		OCR3A = Motor_Signal_L*2.4;  //set motor speed 
+	/*
+	if (Motor_Signal_L <600 && Motor_Signal_L >0){
+ 		OCR3A = Real_Speed_L;  //set motor speed 
 	}
-	else{;
-		if (Motor_Signal_L>255){
+	else{
+		if (Motor_Signal_L>600){
 			OCR3A = 600;
 		}
 		else{
 			OCR3A = 0;
 		}
 	}
-	if (Motor_Signal_R <255 && Motor_Signal_R >0){
- 		OCR3B = Motor_Signal_R*2.4;   //set motor speed 
+	if (Motor_Signal_R <600 && Motor_Signal_R >0){
+ 		OCR3B = Real_Speed_R;   //set motor speed 
 	}
 	else{
-		if (Motor_Signal_R>255){
+		if (Motor_Signal_R>600){
 			OCR3B = 600;
 		}
 		else{
 			OCR3B = 0;
 		}
-	}
+	}*/
+	Motor_Sonar( Motor_Signal_L , Motor_Signal_R );
  	Old_Motor_L = Motor_Signal_L; // update
  	Old_Motor_R = Motor_Signal_R; // update
 
@@ -340,3 +331,4 @@ void PID(void) {          // PID 제어 함수
 	Old_Error_L = Error_L;
 	Old_Error_R = Error_R;
 }
+
