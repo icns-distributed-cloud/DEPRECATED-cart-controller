@@ -40,19 +40,29 @@ void init_DEVICES(void)
 
 //char command;
 int main(){
-
+char buffer1[50], buffer2[50];
+	
 	init_DEVICES();	
 	MotorStop();
 
-	while(1)
-	{ 
-	//MotorGoFoward();
-	//OCR3A = 300+Add_Speed;
-	//OCR3B = 300+Add_Speed;
-//	OCR3A = 600;
-//	OCR3B = 600;
-	PID();
+	while(1){ 
+		
+		SONAR();
 
+    // SONAR BLUETOOTH DISPLAY
+		itoa(cnt1,buffer1,10); //char으로 변환
+   		itoa(cnt2,buffer2,10);
+
+    	SCI_OutChar('L'); 
+		SCI_OutChar(32);  // space bar
+    	SCI_OutString(buffer1); //엔코더값
+    	SCI_OutChar(32);
+    	SCI_OutChar('R');
+		SCI_OutChar(32); 
+    	SCI_OutString(buffer2);
+   		SCI_OutChar(LF);  // 다음줄
+   		SCI_OutChar(CR);
+		
 	}			 	
 	return 0;
 }

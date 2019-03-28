@@ -139,7 +139,7 @@ void SCI_OutString(char *pt)
 
  //USART1, Rx Interrupt Ã³¸® Routine                                           
 
-
+/*
 ISR(USART0_RX_vect)
 {
 	char c;
@@ -152,7 +152,7 @@ ISR(USART0_RX_vect)
 	if(c=='a') Add_Speed+=25;
 	
 	UCSR0B |= (1 << RXCIE0); 
-}
+}*/
 /*
 ISR(USART0_RX_vect)
 {

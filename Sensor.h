@@ -27,8 +27,7 @@ float norm1,norm2,diff1,diff2;
 unsigned int  cnt1, cnt2, TCNT0_H, range_L_H, range_L_L, range_R_H, range_R_L;
 
 //초음파 센서 함수
-void get_SONAR();
-void y_SONAR(void);
+void SONAR();
 void init_SONAR(void);
 
 /**************************** [PSD] ******************************************
@@ -55,10 +54,7 @@ void drive_PSD();
 INT0 (PD0) >> 왼
 INT1 (PD1) >> 오
 *****************************************************************************/
-//범위 정규화를 위함
-#define ENC_NORM_MIN 0
-#define ENC_NORM_MAX 1023
-unsigned int enc_norm1,enc_norm2, enc_diff1, enc_diff2; // 정규화 된 값
+
 
 //전역변수 선언부
 volatile int count_L, count_R, encoder_T, flag, timer1_counter;
@@ -87,4 +83,4 @@ volatile int Pwmduty_R;
 
 //함수 선언부
 void init_ENCODER();
-void PID(void);
+void PID(unsigned int x, unsigned int y);

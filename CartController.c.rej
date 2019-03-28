@@ -1,0 +1,14 @@
+diff a/CartController.c b/CartController.c	(rejected hunks)
+@@ -50,10 +50,10 @@
+ 	
+ 	while(1)
+ 	{ 
+-	//	y_SONAR();
++		y_SONAR();
+ 
+     // SONAR BLUETOOTH DISPLAY
+-	/*	itoa(cnt1,buffer1,10); //char���� ��ȯ
++		itoa(cnt1,buffer1,10); //char���� ��ȯ
+    		itoa(cnt2,buffer2,10);
+ 
+     	SCI_OutChar('L'); 
