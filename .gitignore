@@ -48,3 +48,10 @@ tmtagsHistory
 default/
 *.aps
 *.aws
+
+# TrueSTUDIO files #
+####################
+.metadata/*
+cart/*
+!cart/Inc/main.h
+!cart/Src/main.c
